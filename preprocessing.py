@@ -2,8 +2,86 @@ import chess
 import chess.pgn
 import re
 import numpy as np
+import torch
 
 ALPHA = 0.1
+
+PIECE_MAP = {1: "P", 2: "P", 3: "R", 4: "R", 5: "N", 6: "B", 7: "B", 8: "Q", 9: "K", 10: "K",
+             11: "p", 12: "p", 13: "r", 14: "r", 15: "n", 16: "b", 17: "b", 18: "q", 19: "k", 20: "k"}
+
+# input: 8x8 Torch tensor
+# output: FEN string
+def convert_torch_to_fen(tensor):
+    board = tensor.tolist()
+    fen = ""
+
+    en_passant_str = "-"
+    empty_count = 0
+    for row in range(8):
+        for col in range(8):
+            if board[row][col] == 0:
+                empty_count += 1
+                if col == 7:
+                    fen += str(empty_count)
+                    empty_count = 0
+            else:
+                if empty_count > 0:
+                    fen += str(empty_count)
+                    empty_count = 0
+                fen += PIECE_MAP[board[row][col]]
+            if board[row][col] == 12:
+                if col > 0 and board[row][col - 1] == 1:
+                    en_passant_str = chr(ord("a") + col) + "6"
+                elif col < 7 and board[row][col + 1] == 1:
+                    en_passant_str = chr(ord("a") + col) + "6"
+        if row != 7:
+            fen += "/"
+        else:
+            fen += " "
+    
+    castling_is_legal = False
+    if board[7][3] == 9:
+        # checking if "black" can castle
+        if board[7][0] == 3:
+            castling_is_legal = True
+            fen += "K"
+        if board[7][7] == 3:
+            castling_is_legal = True
+            fen += "Q"
+
+    if board[7][4] == 9:
+        # checking if white can castle
+        if board[7][7] == 3:
+            castling_is_legal = True
+            fen += "K"
+        if board[7][0] == 3:
+            castling_is_legal = True
+            fen += "Q"
+    
+    if board[0][3] == 9:
+        # checking if "white" can castle
+        if board[0][0] == 3:
+            castling_is_legal = True
+            fen += "k"
+        if board[0][7] == 3:
+            castling_is_legal = True
+            fen += "q"
+
+    if board[0][3] == 9:
+        # checking if black can castle
+        if board[0][7] == 3:
+            castling_is_legal = True
+            fen += "k"
+        if board[0][0] == 3:
+            castling_is_legal = True
+            fen += "q"
+    
+    if not castling_is_legal:
+        fen += "-"
+
+    fen += " "
+    fen += en_passant_str
+    return fen
 
 # input: LIST of pgn file paths
 # output: LIST of TUPLES of positions with evaluations
@@ -21,8 +99,14 @@ def convert_pgn_to_fen(pgn_file_path):
             b = node.board()
             fen = b.fen()
             if b.turn == chess.BLACK:
-                fen = b.mirror().fen()
-            fen = ' '.join(fen.split(' ')[:-2])
+                fen = fen.swapcase()
+            # fen = ' '.join(fen.split(' ')[:-2])
+            temp = fen.split(' ')[:-2]
+            del temp[-3]
+            if temp[-1] != "-" and b.turn == chess.BLACK:
+                temp[-1] = temp[-1][:1].swapcase() + str(6)
+                # print(' '.join(temp))
+            fen = ' '.join(temp)
             # print(f"FEN: {fen}")
 
             if b.is_checkmate():
