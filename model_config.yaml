@@ -1,0 +1,8 @@
+vocab_size: 35
+d_model: 256
+n_head: 16
+num_layers: 16
+dim_feedforward: 256
+max_seq_length: 79
+num_classes: 1
+test_mode: true
