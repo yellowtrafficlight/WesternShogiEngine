@@ -69,4 +69,5 @@ def process_lichess_pgns(start_date, output_file, file_size_limit=80*1024*1024*1
     print(f"Final output file size: {os.path.getsize(output_file)} bytes")
 
 if __name__ == "__main__":
-    process_lichess_pgns("2021-01", "lichess_games_with_evals_from_2021.pgn", 80*1024*1024*1024)
+    #process_lichess_pgns("2016-01", "lichess_games_with_evals_from_2016.pgn", 80*1024*1024*1024)
+    process_lichess_pgns("2013-01", "sample.pgn", 1*1024*1024*1024)
