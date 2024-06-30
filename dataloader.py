@@ -17,7 +17,6 @@ PIECE_TO_TOKEN = {
     ' ': 32, '/': 33, '.': 34
 }
 
-
 TOKEN_TO_PIECE = {v: k for k, v in PIECE_TO_TOKEN.items()}
 
 class ChessPositionDataset(IterableDataset):
@@ -127,18 +126,11 @@ def collate_fn(batch: List[Tuple[str, float]]) -> Tuple[torch.Tensor, torch.Tens
     
     return torch.tensor(padded_fens), torch.tensor(evals)
 
-def get_chess_position_dataloader(pgn_file_path: str = 'sample.pgn', batch_size: int = 32, alpha: float = 0.1, chunk_size: int = 10000) -> DataLoader:
+def get_chess_position_dataloader(pgn_file_path: str = 'overnight_training.pgn', batch_size: int = 32, alpha: float = 0.1, chunk_size: int = 10000) -> DataLoader:
     dataset = ChessPositionDataset(pgn_file_path, alpha=alpha, chunk_size=chunk_size)
-    return DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
+    return DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn, pin_memory=True)
 
 # Example usage:
-# dataloader = get_chess_position_dataloader('sample.pgn', batch_size=64, alpha=0.1, chunk_size=1000)
+# dataloader = get_chess_position_dataloader('chinchilla_optimal.pgn', batch_size=1024, alpha=0.1, chunk_size=1000)
 # for tokens, evaluations in dataloader:
-#     # Your training loop here
-#     pass
-
-# Example of encode and decode usage:
-# original_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-# encoded = encode(original_fen)
-# decoded = decode(encoded)
-# Note: The decoded string will now be different from the original FEN due to the simplified decoding
+#    break
