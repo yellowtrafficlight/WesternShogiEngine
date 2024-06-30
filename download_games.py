@@ -1,21 +1,28 @@
 import requests
 from datetime import datetime, timedelta
-import os, subprocess, tempfile
+import os
+import subprocess
+import tempfile
 from tqdm import tqdm
 
-def process_lichess_pgns(start_date, output_file, file_size_limit=80*1024*1024*1024):
+def process_lichess_pgns(start_date, output_dir, game_limit=230000, single_output=None):
     base_url = "https://database.lichess.org/standard/lichess_db_standard_rated_{}.pgn.zst"
     current_date = datetime.strptime(start_date, "%Y-%m")
     end_date = datetime.now().replace(day=1)  # First day of current month
     processed_games = 0
     
-    # Estimating games from 2021 onwards (adjust as needed)
-    total_expected_games = 3_000_000_000 * 0.06  # Estimate for games from 2021, 6% with evals
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     
-    with tqdm(total=total_expected_games, unit="game") as pbar:
-        while current_date <= end_date:
-            url = base_url.format(current_date.strftime("%Y-%m"))
-            print(f"\nProcessing file for date: {current_date.strftime('%Y-%m')}")
+    with tqdm(total=game_limit, unit="game") as pbar:
+        while current_date <= end_date and processed_games < game_limit:
+            month_str = current_date.strftime("%Y-%m")
+            url = base_url.format(month_str)
+            print(f"\nProcessing file for date: {month_str}")
+            if single_output is not None:
+                output_file = single_output
+            else:
+                output_file = os.path.join(output_dir, f"lichess_{month_str}.pgn")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 compressed_file = os.path.join(tmpdir, 'compressed.pgn.zst')
@@ -41,7 +48,7 @@ def process_lichess_pgns(start_date, output_file, file_size_limit=80*1024*1024*1
                         current_date = current_date.replace(day=1)
                         continue
                     
-                    with open(decompressed_file, 'r') as f, open(output_file, 'a') as out_f:
+                    with open(decompressed_file, 'r') as f, open(output_file, 'w') as out_f:
                         pgn = []
                         for line in f:
                             if line.strip(): pgn.append(line)
@@ -49,25 +56,24 @@ def process_lichess_pgns(start_date, output_file, file_size_limit=80*1024*1024*1
                                 out_f.write(''.join(pgn) + "\n\n")
                                 processed_games += 1
                                 pbar.update(1)
+                                if processed_games >= game_limit:
+                                    break
                                 pgn = []
                             else: pgn = []
+                        
+                        if processed_games >= game_limit:
+                            break
                 else:
                     print(f"Failed to download {url}, status code: {response.status_code}")
             
-            current_size = os.path.getsize(output_file)
-            print(f"Current output file size: {current_size} bytes")
             print(f"Total processed games so far: {processed_games}")
+            print(f"Output file for {month_str}: {output_file}")
+            print(f"File size: {os.path.getsize(output_file)} bytes")
             
-            if current_size >= file_size_limit:
-                print(f"File size limit reached: {file_size_limit} bytes")
-                break
-
             current_date += timedelta(days=32)
             current_date = current_date.replace(day=1)
-
+    
     print(f"\nFinal number of processed games: {processed_games}")
-    print(f"Final output file size: {os.path.getsize(output_file)} bytes")
 
 if __name__ == "__main__":
-    #process_lichess_pgns("2016-01", "lichess_games_with_evals_from_2016.pgn", 80*1024*1024*1024)
-    process_lichess_pgns("2013-01", "sample.pgn", 1*1024*1024*1024)
+    process_lichess_pgns('2013-01', output_dir=None, game_limit=3_000_000, single_output='chinchilla_optimal.pgn')
